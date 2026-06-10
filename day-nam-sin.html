@@ -1,0 +1,601 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Đầy Năm Sin Thúi - Chúc Mừng Sinh Nhật</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  html, body {
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    font-family: "Segoe UI", "Arial Rounded MT Bold", Arial, sans-serif;
+    background: linear-gradient(180deg, #aee7ff 0%, #d9f3ff 45%, #ffe9c7 100%);
+    touch-action: none;
+  }
+
+  #game {
+    position: relative;
+    width: 100%;
+    height: 100%;
+  }
+
+  /* ===== Tiêu đề ===== */
+  #title {
+    position: absolute;
+    top: 12px;
+    width: 100%;
+    text-align: center;
+    z-index: 20;
+    pointer-events: none;
+  }
+  #title h1 {
+    font-size: clamp(20px, 4.5vw, 42px);
+    color: #ff5e8a;
+    text-shadow: 2px 2px 0 #fff, 4px 4px 0 rgba(255, 94, 138, .25);
+    letter-spacing: 1px;
+  }
+  #title h2 {
+    font-size: clamp(14px, 2.6vw, 24px);
+    color: #ff9d2e;
+    text-shadow: 1px 1px 0 #fff;
+    margin-top: 4px;
+  }
+
+  /* ===== Bảng thông tin ===== */
+  #hud {
+    position: absolute;
+    top: 12px;
+    left: 14px;
+    z-index: 20;
+    background: rgba(255,255,255,.85);
+    border: 3px solid #ffb3c9;
+    border-radius: 16px;
+    padding: 8px 14px;
+    font-size: clamp(13px, 2vw, 18px);
+    color: #d6336c;
+    font-weight: bold;
+    box-shadow: 0 3px 8px rgba(0,0,0,.12);
+  }
+
+  /* ===== Thế giới game ===== */
+  #world {
+    position: absolute;
+    left: 0;
+    bottom: 0;
+    height: 100%;
+    will-change: transform;
+  }
+
+  #ground {
+    position: absolute;
+    left: 0;
+    bottom: 0;
+    width: 100%;
+    height: 90px;
+    background: repeating-linear-gradient(90deg, #8bd66b 0 60px, #7ccb5c 60px 120px);
+    border-top: 6px solid #6ab84d;
+  }
+
+  .milestone {
+    position: absolute;
+    bottom: 90px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    transform: translateX(-50%);
+  }
+  .milestone .flag {
+    font-size: 36px;
+    transition: transform .3s;
+  }
+  .milestone .sign {
+    background: #fff7e0;
+    border: 3px solid #f5b942;
+    border-radius: 12px;
+    padding: 4px 10px;
+    font-weight: bold;
+    color: #b07712;
+    font-size: 14px;
+    white-space: nowrap;
+    box-shadow: 0 2px 5px rgba(0,0,0,.15);
+  }
+  .milestone .pole {
+    width: 6px;
+    height: 50px;
+    background: #c98f4a;
+    border-radius: 3px;
+  }
+  .milestone.reached .flag { transform: scale(1.4) rotate(-10deg); }
+  .milestone.reached .sign { background: #ffe1ec; border-color: #ff5e8a; color: #d6336c; }
+
+  .deco {
+    position: absolute;
+    bottom: 96px;
+    font-size: 30px;
+    transform: translateX(-50%);
+    pointer-events: none;
+  }
+  .cloud {
+    position: absolute;
+    font-size: 48px;
+    opacity: .9;
+    pointer-events: none;
+  }
+
+  /* ===== Em bé ===== */
+  #baby {
+    position: absolute;
+    bottom: 96px;
+    transform-origin: bottom center;
+    transition: transform .5s ease;
+    z-index: 10;
+    will-change: left;
+  }
+  #babySprite {
+    font-size: 50px;
+    display: inline-block;
+    transform: scaleX(1);
+  }
+  #babyImg {
+    height: 130px;
+    display: none;
+    filter: drop-shadow(0 6px 6px rgba(0,0,0,.25));
+    transform: scaleX(1);
+    pointer-events: none;
+  }
+  #baby.flip #babySprite, #baby.flip #babyImg { transform: scaleX(-1); }
+  #baby.crawling #babySprite, #baby.crawling #babyImg { animation: crawl .35s infinite alternate; }
+  @keyframes crawl {
+    from { transform: translateY(0) rotate(-4deg) scaleX(var(--face, 1)); }
+    to   { transform: translateY(-6px) rotate(4deg) scaleX(var(--face, 1)); }
+  }
+  #babyLabel {
+    position: absolute;
+    top: -26px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #ff5e8a;
+    color: #fff;
+    font-size: 12px;
+    font-weight: bold;
+    padding: 2px 10px;
+    border-radius: 10px;
+    white-space: nowrap;
+  }
+
+  /* ===== Hiệu ứng lên cấp ===== */
+  #levelup {
+    position: absolute;
+    top: 38%;
+    width: 100%;
+    text-align: center;
+    font-size: clamp(22px, 5vw, 48px);
+    font-weight: bold;
+    color: #ff9d2e;
+    text-shadow: 2px 2px 0 #fff;
+    z-index: 30;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity .3s, transform .3s;
+  }
+  #levelup.show {
+    opacity: 1;
+    transform: scale(1.15);
+  }
+
+  /* ===== Điều khiển ===== */
+  #controls {
+    position: absolute;
+    bottom: 14px;
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    gap: 30px;
+    z-index: 20;
+  }
+  .btn {
+    width: 76px;
+    height: 76px;
+    border-radius: 50%;
+    border: 4px solid #fff;
+    background: rgba(255, 94, 138, .9);
+    color: #fff;
+    font-size: 34px;
+    font-weight: bold;
+    cursor: pointer;
+    box-shadow: 0 4px 10px rgba(0,0,0,.2);
+    user-select: none;
+    -webkit-user-select: none;
+    touch-action: none;
+  }
+  .btn:active { transform: scale(.92); background: #ff7ba0; }
+
+  #hint {
+    position: absolute;
+    bottom: 100px;
+    width: 100%;
+    text-align: center;
+    color: #5a8a3c;
+    font-size: clamp(12px, 1.8vw, 16px);
+    font-weight: bold;
+    z-index: 20;
+    text-shadow: 1px 1px 0 #fff;
+    pointer-events: none;
+  }
+
+  /* ===== Thông báo mời ===== */
+  #invite {
+    position: absolute;
+    inset: 0;
+    background: rgba(255, 240, 246, .96);
+    z-index: 50;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+  }
+  #invite.show { display: flex; }
+  #inviteCard {
+    background: #fff;
+    border: 6px dotted #ff5e8a;
+    border-radius: 28px;
+    padding: 36px 30px;
+    max-width: 540px;
+    width: 88%;
+    box-shadow: 0 10px 40px rgba(255, 94, 138, .35);
+    animation: pop .6s ease;
+  }
+  @keyframes pop {
+    0% { transform: scale(.4) rotate(-6deg); opacity: 0; }
+    70% { transform: scale(1.08) rotate(2deg); }
+    100% { transform: scale(1) rotate(0); opacity: 1; }
+  }
+  #inviteCard .cake { font-size: 70px; animation: bounce 1.2s infinite; display: inline-block; }
+  @keyframes bounce {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-14px); }
+  }
+  #inviteCard h2 {
+    color: #ff5e8a;
+    font-size: clamp(22px, 4vw, 34px);
+    margin: 14px 0 10px;
+  }
+  #inviteCard p.main {
+    font-size: clamp(17px, 3vw, 24px);
+    color: #444;
+    line-height: 1.5;
+    font-weight: bold;
+  }
+  #inviteCard p.main b { color: #ff9d2e; font-size: 1.2em; }
+  #inviteCard .address {
+    margin-top: 14px;
+    font-size: clamp(14px, 2.4vw, 18px);
+    color: #555;
+    line-height: 1.5;
+    font-weight: bold;
+  }
+  #inviteCard .maps {
+    display: inline-block;
+    margin-top: 10px;
+    padding: 8px 18px;
+    background: #e8f1ff;
+    border: 2px solid #4285f4;
+    border-radius: 20px;
+    color: #1a66d6;
+    font-weight: bold;
+    font-size: 15px;
+    text-decoration: none;
+  }
+  #inviteCard .maps:active { transform: scale(.96); }
+  #inviteCard .sub {
+    margin-top: 12px;
+    color: #999;
+    font-size: 14px;
+  }
+  #replay {
+    margin-top: 22px;
+    padding: 12px 30px;
+    font-size: 17px;
+    font-weight: bold;
+    color: #fff;
+    background: #ff5e8a;
+    border: none;
+    border-radius: 30px;
+    cursor: pointer;
+    box-shadow: 0 4px 12px rgba(255,94,138,.4);
+  }
+  #replay:active { transform: scale(.95); }
+
+  /* ===== Confetti ===== */
+  .confetti {
+    position: absolute;
+    top: -30px;
+    font-size: 24px;
+    z-index: 60;
+    animation: fall linear forwards;
+    pointer-events: none;
+  }
+  @keyframes fall {
+    to { transform: translateY(110vh) rotate(720deg); }
+  }
+</style>
+</head>
+<body>
+<div id="game">
+  <div id="title">
+    <h1>🎀 Đầy Năm Sin Thúi 🎀</h1>
+    <h2>🎂 Chúc Mừng Sinh Nhật 🎂</h2>
+  </div>
+
+  <div id="hud">👶 Tháng: <span id="month">0 ngày</span></div>
+
+  <div id="world">
+    <div id="ground"></div>
+    <div id="baby">
+      <div id="babyLabel">Bé Sin · 0 ngày</div>
+      <img id="babyImg" alt="Bé Sin">
+      <span id="babySprite">👶</span>
+    </div>
+  </div>
+
+  <div id="levelup"></div>
+  <div id="hint">⬅️ ➡️ Phím mũi tên hoặc nhấn nút để giúp bé Sin bò về phía sinh nhật! 🎉</div>
+
+  <div id="controls">
+    <button class="btn" id="btnLeft">◀</button>
+    <button class="btn" id="btnRight">▶</button>
+  </div>
+
+  <div id="invite">
+    <div id="inviteCard">
+      <span class="cake">🎂</span>
+      <h2>🎉 Bé Sin tròn 1 tuổi! 🎉</h2>
+      <p class="main">
+        Mời anh chị <b>ngày 5 tháng 7</b><br>
+        đến dự lễ đầy năm em <b>Sin</b> 💝
+      </p>
+      <p class="address">
+        📍 Địa chỉ: 86/4 Đường Số 9, Phường Linh Tây,<br>
+        TP. Thủ Đức, TP.HCM
+      </p>
+      <a class="maps" href="https://maps.app.goo.gl/EYSUHVrXUvx35Yrh8" target="_blank" rel="noopener">🗺️ Xem bản đồ Google Maps</a>
+      <p class="sub">Sự hiện diện của anh chị là niềm vui của gia đình ạ 🥰</p>
+      <button id="replay">🔄 Chơi lại</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  // ===== Cấu hình các mốc tháng =====
+  // Mỗi tháng: vị trí (px trong thế giới), tên hiển thị, biểu tượng bé, độ lớn (scale)
+  var SEGMENT = 700;             // khoảng cách giữa các mốc
+  var WORLD_LEN = SEGMENT * 13;  // 0 ngày -> 12 tháng
+  var MILESTONES = [];
+  var SPRITES = ["👶","👶","🍼","👶","🧸","👶","🍌","👶","🦀","👶","🚼","👶","🎂"];
+  var LABELS = [];
+  for (var i = 0; i <= 12; i++) {
+    LABELS.push(i === 0 ? "0 ngày" : i + " tháng");
+    MILESTONES.push({
+      x: 150 + i * SEGMENT,
+      label: i === 0 ? "🌱 0 ngày" : "🌟 " + i + " tháng",
+      scale: 0.55 + i * 0.12,   // bé lớn dần theo từng tháng
+      sprite: SPRITES[i]
+    });
+  }
+  var FUN_TEXT = [
+    "Bé Sin chào đời! 🌱",
+    "1 tháng - biết hóng chuyện 👀",
+    "2 tháng - biết cười toe 😄",
+    "3 tháng - biết lẫy rồi nè 🤸",
+    "4 tháng - cầm nắm đồ chơi 🧸",
+    "5 tháng - ê a cả ngày 🎵",
+    "6 tháng - ăn dặm ngon ghê 🥣",
+    "7 tháng - ngồi vững như núi ⛰️",
+    "8 tháng - bò nhanh như gió 💨",
+    "9 tháng - vịn đứng dậy 🧍",
+    "10 tháng - chập chững bước 👣",
+    "11 tháng - gọi ba ba ma ma 🗣️",
+    "12 tháng - ĐẦY NĂM RỒI! 🎂🎉"
+  ];
+
+  // ===== Tham chiếu DOM =====
+  var world = document.getElementById("world");
+  var baby = document.getElementById("baby");
+  var babySprite = document.getElementById("babySprite");
+  var babyImg = document.getElementById("babyImg");
+  var babyLabel = document.getElementById("babyLabel");
+
+  // ===== Ảnh em bé theo tháng =====
+  // Ưu tiên assert/<tháng>.png (1.png ... 12.png, 0.png cho sơ sinh);
+  // nếu chưa có thì dùng chung assert/sin.png; nếu không có ảnh nào thì quay về emoji.
+  var IMG_DIR = "assert/";
+  var FALLBACK_IMG = IMG_DIR + "sin.png";
+  function setBabyImage(idx) {
+    babyImg.onload = function () {
+      babyImg.style.display = "block";
+      babySprite.style.display = "none";
+    };
+    babyImg.onerror = function () {
+      if (babyImg.src.indexOf("sin.png") === -1) {
+        babyImg.src = FALLBACK_IMG;
+      } else {
+        babyImg.style.display = "none";
+        babySprite.style.display = "inline-block";
+      }
+    };
+    babyImg.src = IMG_DIR + idx + ".png";
+  }
+  var monthEl = document.getElementById("month");
+  var levelupEl = document.getElementById("levelup");
+  var inviteEl = document.getElementById("invite");
+
+  world.style.width = WORLD_LEN + "px";
+
+  // ===== Dựng cảnh: cờ mốc, cây cối, mây =====
+  var milestoneEls = [];
+  MILESTONES.forEach(function (m, idx) {
+    var el = document.createElement("div");
+    el.className = "milestone";
+    el.style.left = m.x + "px";
+    el.innerHTML =
+      '<div class="flag">' + (idx === 12 ? "🎂" : "🚩") + "</div>" +
+      '<div class="sign">' + m.label + "</div>" +
+      '<div class="pole"></div>';
+    world.appendChild(el);
+    milestoneEls.push(el);
+  });
+
+  var DECOS = ["🌳","🌷","🌻","🍄","🌲","🌼","🦋","🌸","🐥","🌺"];
+  for (var d = 0; d < 40; d++) {
+    var deco = document.createElement("div");
+    deco.className = "deco";
+    deco.textContent = DECOS[d % DECOS.length];
+    deco.style.left = (300 + Math.random() * (WORLD_LEN - 600)) + "px";
+    deco.style.fontSize = (22 + Math.random() * 18) + "px";
+    world.appendChild(deco);
+  }
+  for (var c = 0; c < 18; c++) {
+    var cloud = document.createElement("div");
+    cloud.className = "cloud";
+    cloud.textContent = "☁️";
+    cloud.style.left = (Math.random() * WORLD_LEN) + "px";
+    cloud.style.top = (5 + Math.random() * 25) + "%";
+    world.appendChild(cloud);
+  }
+
+  // ===== Trạng thái game =====
+  var babyX = MILESTONES[0].x;
+  var currentMonth = 0;
+  var speed = 5;
+  var keyLeft = false, keyRight = false;
+  var finished = false;
+
+  function applyMonth(idx) {
+    currentMonth = idx;
+    var m = MILESTONES[idx];
+    monthEl.textContent = LABELS[idx];
+    babyLabel.textContent = "Bé Sin · " + LABELS[idx];
+    babySprite.textContent = m.sprite;
+    setBabyImage(idx);
+    baby.style.transform = "scale(" + m.scale + ")";
+    milestoneEls[idx].classList.add("reached");
+    showLevelUp(FUN_TEXT[idx]);
+  }
+
+  var levelupTimer = null;
+  function showLevelUp(text) {
+    levelupEl.textContent = text;
+    levelupEl.classList.add("show");
+    clearTimeout(levelupTimer);
+    levelupTimer = setTimeout(function () {
+      levelupEl.classList.remove("show");
+    }, 1700);
+  }
+
+  function dropConfetti() {
+    var emojis = ["🎉","🎊","🎈","⭐","💖","🎀","🍰"];
+    for (var i = 0; i < 60; i++) {
+      (function (i) {
+        setTimeout(function () {
+          var p = document.createElement("div");
+          p.className = "confetti";
+          p.textContent = emojis[Math.floor(Math.random() * emojis.length)];
+          p.style.left = Math.random() * 100 + "vw";
+          p.style.animationDuration = (2 + Math.random() * 2.5) + "s";
+          document.body.appendChild(p);
+          setTimeout(function () { p.remove(); }, 5000);
+        }, i * 60);
+      })(i);
+    }
+  }
+
+  function finish() {
+    finished = true;
+    dropConfetti();
+    setTimeout(function () {
+      inviteEl.classList.add("show");
+    }, 900);
+  }
+
+  // ===== Vòng lặp game =====
+  function loop() {
+    if (!finished) {
+      var moving = false;
+      if (keyRight) {
+        babyX = Math.min(babyX + speed, MILESTONES[12].x);
+        baby.classList.remove("flip");
+        baby.style.setProperty("--face", "1");
+        moving = true;
+      } else if (keyLeft) {
+        babyX = Math.max(babyX - speed, MILESTONES[0].x);
+        baby.classList.add("flip");
+        baby.style.setProperty("--face", "-1");
+        moving = true;
+      }
+      baby.classList.toggle("crawling", moving);
+
+      // Kiểm tra chạm mốc mới
+      for (var i = currentMonth + 1; i <= 12; i++) {
+        if (babyX >= MILESTONES[i].x - 10) {
+          applyMonth(i);
+        } else {
+          break;
+        }
+      }
+      if (currentMonth === 12 && !finished) finish();
+
+      // Camera đi theo bé
+      var camX = Math.max(0, Math.min(babyX - window.innerWidth * 0.4, WORLD_LEN - window.innerWidth));
+      world.style.transform = "translateX(" + (-camX) + "px)";
+      baby.style.left = babyX + "px";
+    }
+    requestAnimationFrame(loop);
+  }
+
+  // ===== Điều khiển bàn phím =====
+  document.addEventListener("keydown", function (e) {
+    if (e.key === "ArrowRight" || e.key === "d" || e.key === "D") keyRight = true;
+    if (e.key === "ArrowLeft" || e.key === "a" || e.key === "A") keyLeft = true;
+  });
+  document.addEventListener("keyup", function (e) {
+    if (e.key === "ArrowRight" || e.key === "d" || e.key === "D") keyRight = false;
+    if (e.key === "ArrowLeft" || e.key === "a" || e.key === "A") keyLeft = false;
+  });
+
+  // ===== Điều khiển cảm ứng / chuột =====
+  function bindButton(id, setFn) {
+    var btn = document.getElementById(id);
+    var on = function (e) { e.preventDefault(); setFn(true); };
+    var off = function (e) { e.preventDefault(); setFn(false); };
+    btn.addEventListener("pointerdown", on);
+    btn.addEventListener("pointerup", off);
+    btn.addEventListener("pointerleave", off);
+    btn.addEventListener("pointercancel", off);
+  }
+  bindButton("btnLeft", function (v) { keyLeft = v; });
+  bindButton("btnRight", function (v) { keyRight = v; });
+
+  // ===== Chơi lại =====
+  document.getElementById("replay").addEventListener("click", function () {
+    finished = false;
+    babyX = MILESTONES[0].x;
+    inviteEl.classList.remove("show");
+    milestoneEls.forEach(function (el, idx) {
+      if (idx > 0) el.classList.remove("reached");
+    });
+    applyMonth(0);
+  });
+
+  // Khởi động
+  applyMonth(0);
+  loop();
+})();
+</script>
+</body>
+</html>
